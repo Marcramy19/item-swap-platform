@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String?
+  city          String?
+  bio           String?
+  isAdmin       Boolean   @default(false)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt
+  
+  items         Item[]    @relation(name: "user_items")
+  swapRequests  SwapRequest[] @relation(name: "user_swap_requests")
+
+  @@map("users")
+}
+
+model Item {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  category    String
+  condition   String
+  status      String   @default("available")
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt
+  
+  owner       User     @relation(fields: [ownerId], references: [id], name: "user_items")
+  
+  // Two relations to SwapRequest - need explicit names!
+  offeredSwaps   SwapRequest[] @relation(name: "offered_items")
+  requestedSwaps SwapRequest[] @relation(name: "requested_items")
+
+  @@index([category])
+  @@index([status])
+  @@map("items")
+}
+
+model SwapRequest {
+  id                String   @id @default(uuid())
+  status            String   @default("pending")
+  requesterId       String   @map("requester_id")
+  offeredItemId     String   @map("offered_item_id")
+  requestedItemId   String   @map("requested_item_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt
+  
+  requester         User     @relation(fields: [requesterId], references: [id], name: "user_swap_requests")
+  
+  // ✅ KEY FIX: Add explicit relation names to disambiguate
+  offeredItem       Item     @relation(fields: [offeredItemId], references: [id], name: "offered_items")
+  requestedItem     Item     @relation(fields: [requestedItemId], references: [id], name: "requested_items")
+
+  @@map("swaps")
+}
