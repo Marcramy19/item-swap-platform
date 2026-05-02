@@ -1,0 +1,39 @@
+node_modules
+# Keep environment variables out of version control
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.production
+
+# Database files (SQLite local dev only)
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Prisma
+.prisma
+prisma/migrations/**/migration.sql
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/

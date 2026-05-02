@@ -1,13 +1,47 @@
+# Environment & Secrets
 .env
+.env.local
+.env.production
+
+# Local Database
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Dependencies & Cache
 node_modules/
-vendor/
-__pycache__/
-*.pyc
-*.log
+.prisma/
+prisma/migrations/**/migration.sql
+
+# OS & IDE
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-coverage/
-dist/
-build/
+
+# Logs
+*.log
+npm-debug.log*# Environment & Secrets
+.env
+.env.local
+.env.production
+
+# Local Database
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Dependencies & Cache
+node_modules/
+.prisma/
+prisma/migrations/**/migration.sql
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

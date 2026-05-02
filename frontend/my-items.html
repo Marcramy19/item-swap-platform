@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Items - EcoSwap</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="/" class="logo">♻️ EcoSwap</a>
+        <div class="nav-links" id="nav-links">
+          <a href="items.html">Browse</a>
+          <a href="item-form.html">Post Item</a>
+          <a href="my-items.html" class="active">My Items</a>
+          <a href="swaps.html">Swaps</a>
+          <a href="profile.html">Profile</a>
+          <a href="#" id="logout-btn">Logout</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="page-header">
+        <h1>My Items</h1>
+        <p id="items-count">Loading...</p>
+      </div>
+
+      <div style="margin-bottom: 2rem; text-align: right">
+        <a href="item-form.html" class="btn btn-primary">+ Post Item</a>
+      </div>
+
+      <div id="error-msg" class="alert alert-error" style="display: none"></div>
+
+      <div id="items-grid" class="card-grid">
+        <div class="loading">Loading your items...</div>
+      </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        // Check if user is logged in
+        const user = getUser();
+        const token = getToken();
+
+        if (!user || !token) {
+          // Not logged in - redirect to login
+          window.location.href = "login.html";
+          return;
+        }
+
+        // Load items
+        await loadMyItems();
+      });
+
+      async function loadMyItems() {
+        const grid = document.getElementById("items-grid");
+        const countEl = document.getElementById("items-count");
+        const errorEl = document.getElementById("error-msg");
+
+        try {
+          const token = getToken();
+          const res = await fetch("/api/items/mine", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (res.status === 401) {
+            // Token invalid - redirect to login
+            window.location.href = "login.html";
+            return;
+          }
+
+          if (!res.ok) {
+            throw new Error(`Failed to load items: ${res.status}`);
+          }
+
+          const items = await res.json();
+
+          // Update count
+          countEl.textContent = `${items.length} item${items.length !== 1 ? "s" : ""} listed`;
+
+          if (items.length === 0) {
+            grid.innerHTML = `
+            <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem;">
+              <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">📦</span>
+              <p style="color: var(--text-muted); margin-bottom: 1.5rem;">You haven't posted any items yet.</p>
+              <a href="item-form.html" class="btn btn-primary">Post Your First Item</a>
+            </div>
+          `;
+            return;
+          }
+
+          // Inside loadMyItems() function, replace the grid.innerHTML section with:
+
+          grid.innerHTML = items
+            .map((item) => {
+              // Check if item is available - only show Edit button for available items
+              const isAvailable = item.status === "available";
+
+              return `
+            <article class="item-card">
+              <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
+              <div class="badges">
+                <span class="badge badge-category">${escapeHtml(item.category)}</span>
+                <span class="badge badge-condition">${escapeHtml(item.condition.replace("_", " "))}</span>
+                <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
+              </div>
+              <p>${escapeHtml(item.description || "No description")}</p>
+              <div class="action-buttons" style="margin-top: 1rem;">
+                ${
+                  isAvailable
+                    ? `
+                  <a href="item-form.html?id=${item.id}" class="btn btn-secondary btn-sm">Edit</a>
+                `
+                    : ""
+                }
+                <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">Delete</button>
+              </div>
+            </article>
+          `;
+            })
+            .join("");
+        } catch (err) {
+          console.error("Error loading items:", err);
+          errorEl.textContent =
+            err.message || "Failed to load items. Please try again.";
+          errorEl.style.display = "block";
+          grid.innerHTML = "";
+          countEl.textContent = "0 items listed";
+        }
+      }
+
+      async function deleteItem(itemId) {
+        if (!confirm("Delete this item?")) return;
+
+        try {
+          const token = getToken();
+          const res = await fetch(`/api/items/${itemId}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to delete item");
+          }
+
+          // Reload the list
+          await loadMyItems();
+        } catch (err) {
+          alert(err.message || "Failed to delete item");
+        }
+      }
+
+      function escapeHtml(str) {
+        if (!str) return "";
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+    </script>
+  </body>
+</html>
