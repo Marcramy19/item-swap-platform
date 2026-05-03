@@ -92,11 +92,7 @@
     
       // Inside the map function for items
       grid.innerHTML = data.items.map(item => {
-        // ✅ Safely extract owner info with fallbacks
         const ownerName = item.owner?.name?.trim() || 'Unknown';
-        const ownerCity = item.owner?.city?.trim() || 'Unknown';
-
-        // ✅ Safely extract description
         const description = item.description?.trim() || 'No description';
 
         return `
@@ -109,7 +105,7 @@
             </div>
             <p>${escapeHtml(description)}</p>
             <p style="color: var(--text-muted); font-size: 0.875rem;">
-              by ${escapeHtml(ownerName)} • ${escapeHtml(ownerCity)}
+              by ${escapeHtml(ownerName)}
             </p>
             <a href="item-detail.html?id=${item.id}" class="btn btn-primary btn-sm">View Details</a>
           </article>
