@@ -101,7 +101,19 @@ app.get('/api/items', async (req, res) => {
     const [items, total] = await Promise.all([
       prisma.item.findMany({
         where,
-        select: { id: true, title: true, category: true, condition: true, status: true, createdAt: true },
+        // ✅ ADD description and owner here:
+        select: { 
+          id: true, 
+          title: true, 
+          description: true,  // ✅ Added
+          category: true, 
+          condition: true, 
+          status: true, 
+          createdAt: true,
+          owner: {            // ✅ Added
+            select: { id: true, name: true, city: true }
+          }
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: PAGE_SIZE
@@ -117,12 +129,25 @@ app.get('/api/items', async (req, res) => {
 });
 
 // 2. List MY items (auth required) ← MUST COME BEFORE /:id
+// 2. List MY items (auth required)
 app.get('/api/items/mine', auth, async (req, res) => {
   console.log('🔍 DEBUG: /api/items/mine called');
   try {
     const items = await prisma.item.findMany({
       where: { ownerId: req.user.userId },
-      select: { id: true, title: true, category: true, condition: true, status: true, createdAt: true },
+      // ✅ ADD description and owner here:
+      select: { 
+        id: true, 
+        title: true, 
+        description: true,  // ✅ Added
+        category: true, 
+        condition: true, 
+        status: true, 
+        createdAt: true,
+        owner: {            // ✅ Added
+          select: { id: true, name: true, city: true }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(items);
