@@ -94,11 +94,11 @@
       grid.innerHTML = data.items.map(item => {
         // ✅ Safely extract owner info with fallbacks
         const ownerName = item.owner?.name?.trim() || 'Unknown';
-        const ownerCity = item.owner?.city?.trim() || 'Unknown';
-        
+        // const ownerCity = item.owner?.city?.trim() || 'Unknown';
+
         // ✅ Safely extract description
         const description = item.description?.trim() || 'No description';
-        
+
         return `
           <article class="item-card">
             <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
