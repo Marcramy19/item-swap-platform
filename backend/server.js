@@ -17,8 +17,10 @@ const prisma = new PrismaClient();
 // 🔹 Middleware
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
-
+const frontendPath = process.env.VERCEL 
+  ? path.join(process.cwd(), 'frontend') 
+  : path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendPath));
 // 🔹 Auth Middleware
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
