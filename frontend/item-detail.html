@@ -55,52 +55,50 @@
           if (!res.ok) throw new Error("Item not found");
           const item = await res.json();
 
-          const isOwner = user && user.id == item.owner_id;
-
-          // In item-detail.html, inside loadItemDetail() function:
+          // ✅ CORRECT: Access nested owner object
+          const ownerName = item.owner?.name || 'Unknown';
+          const ownerCity = item.owner?.city || 'Unknown';
+          const isOwner = user && user.id == item.owner?.id;
 
           let actionButtons = "";
           if (isOwner) {
             if (item.status === "available") {
-              // Available: show both Edit and Delete
               actionButtons = `
-              <div class="action-buttons">
-                <a href="item-form.html?id=${item.id}" class="btn btn-secondary">Edit</a>
-                <button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>
-              </div>
-            `;
+                <div class="action-buttons">
+                  <a href="item-form.html?id=${item.id}" class="btn btn-secondary">Edit</a>
+                  <button class="btn btn-danger" onclick="deleteItem('${item.id}')">Delete</button>
+                </div>
+              `;
             } else {
-              // Swapped: show only Delete
               actionButtons = `
-              <div class="action-buttons">
-                <button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>
-              </div>
-            `;
+                <div class="action-buttons">
+                  <button class="btn btn-danger" onclick="deleteItem('${item.id}')">Delete</button>
+                </div>
+              `;
             }
           } else if (user && item.status === "available") {
             actionButtons = `
-            <div class="action-buttons">
-              <button class="btn btn-primary" onclick="openSwapModal(${item.id})">🔄 Propose Swap</button>
-            </div>
-          `;
+              <div class="action-buttons">
+                <button class="btn btn-primary" onclick="openSwapModal('${item.id}')">🔄 Propose Swap</button>
+              </div>
+            `;
           }
 
           container.innerHTML = `
-          <h1>${escapeHtml(item.title)}</h1>
-          <div class="detail-meta">
-            <span class="badge badge-category">${escapeHtml(item.category)}</span>
-            <span class="badge badge-condition">${escapeHtml(item.condition.replace("_", " "))}</span>
-            <span class="badge badge-status-available">${escapeHtml(item.status)}</span>
-          </div>
-          <p class="detail-description">${escapeHtml(item.description || "No description")}</p>
-          <div class="detail-owner">
-            <strong>Posted by:</strong> ${escapeHtml(item.owner_name || "Unknown")} • ${escapeHtml(item.owner_city || "Unknown")}
-          </div>
-          ${actionButtons}
-        `;
+            <h1>${escapeHtml(item.title)}</h1>
+            <div class="detail-meta">
+              <span class="badge badge-category">${escapeHtml(item.category)}</span>
+              <span class="badge badge-condition">${escapeHtml((item.condition || '').replace("_", " "))}</span>
+              <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
+            </div>
+            <p class="detail-description">${escapeHtml(item.description || "No description")}</p>
+            <div class="detail-owner">
+              <strong>Posted by:</strong> ${escapeHtml(ownerName)}${ownerCity !== 'Unknown' ? ` • ${escapeHtml(ownerCity)}` : ''}
+            </div>
+            ${actionButtons}
+          `;
         } catch (err) {
-          container.innerHTML =
-            '<div class="alert alert-error">Item not found</div>';
+          container.innerHTML = '<div class="alert alert-error">Item not found</div>';
         }
       }
 
@@ -112,6 +110,15 @@
         }
 
         try {
+          // 🔍 FIRST: Check if user owns the requested item (prevent self-swap)
+          const itemRes = await fetch(`/api/items/${requestedItemId}`);
+          const item = await itemRes.json();
+          
+          if (item.owner?.id === user.id) {
+            alert('You cannot swap with yourself!');
+            return;
+          }
+
           // Fetch user's items
           const res = await fetch("/api/items/mine", {
             headers: { Authorization: `Bearer ${getToken()}` },
@@ -125,54 +132,47 @@
 
           let content = "";
           if (available.length === 0) {
-            // No available items - show message like first screenshot
             content = `
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem; text-align: center;">
-              You have no available items. <a href="item-form.html" style="color: var(--primary); font-weight: 600;">Post one first</a>.
-            </p>
-            <div class="modal-actions" style="justify-content: center;">
-              <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
-            </div>
-          `;
+              <p style="color: var(--text-muted); margin-bottom: 1.5rem; text-align: center;">
+                You have no available items. <a href="item-form.html" style="color: var(--primary); font-weight: 600;">Post one first</a>.
+              </p>
+              <div class="modal-actions" style="justify-content: center;">
+                <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Close</button>
+              </div>
+            `;
           } else {
-            // Has available items - show selection like second screenshot
             content = `
-            <div id="swap-items">
-              ${available
-                .map(
-                  (item) => `
-                <div class="modal-item" onclick="selectSwapItem(this, ${item.id})">
-                  <strong>${escapeHtml(item.title)}</strong>
-                  <span class="badge badge-category" style="margin-left: 8px;">${escapeHtml(item.category)}</span>
-                </div>
-              `,
-                )
-                .join("")}
-            </div>
-            <div class="modal-actions">
-              <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-              <button class="btn btn-primary" id="send-swap" disabled onclick="submitSwap(${requestedItemId})">Send Swap Request</button>
-            </div>
-          `;
+              <div id="swap-items">
+                ${available.map((item) => `
+                  <div class="modal-item" onclick="selectSwapItem(this, '${item.id}')">
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span class="badge badge-category" style="margin-left: 8px;">${escapeHtml(item.category)}</span>
+                  </div>
+                `).join("")}
+              </div>
+              <div class="modal-actions">
+                <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button class="btn btn-primary" id="send-swap" disabled onclick="submitSwap('${requestedItemId}')">Send Swap Request</button>
+              </div>
+            `;
           }
 
           modal.innerHTML = `
-          <div class="modal" onclick="event.stopPropagation()">
-            <h2>Select an Item to Offer</h2>
-            ${content}
-          </div>
-        `;
+            <div class="modal" onclick="event.stopPropagation()">
+              <h2>Select an Item to Offer</h2>
+              ${content}
+            </div>
+          `;
 
           document.body.appendChild(modal);
         } catch (err) {
+          console.error('Error opening swap modal:', err);
           alert("Failed to load your items");
         }
       }
 
       function selectSwapItem(element, itemId) {
-        document
-          .querySelectorAll(".modal-item")
-          .forEach((el) => el.classList.remove("selected"));
+        document.querySelectorAll(".modal-item").forEach((el) => el.classList.remove("selected"));
         element.classList.add("selected");
         element.dataset.itemId = itemId;
         document.getElementById("send-swap").disabled = false;
@@ -185,6 +185,7 @@
         const offeredItemId = selectedItem.dataset.itemId;
 
         try {
+          // ✅ CORRECT: Send IDs as strings (no parseInt)
           const res = await fetch("/api/swaps", {
             method: "POST",
             headers: {
@@ -192,28 +193,28 @@
               Authorization: `Bearer ${getToken()}`,
             },
             body: JSON.stringify({
-              offeredItemId: parseInt(offeredItemId),
-              requestedItemId: parseInt(requestedItemId),
+              offeredItemId: offeredItemId,
+              requestedItemId: requestedItemId,
             }),
           });
 
           if (res.ok) {
-            // Show success message
             const modal = document.querySelector(".modal-overlay");
             modal.innerHTML = `
-            <div class="modal" onclick="event.stopPropagation()">
-              <h2 style="color: var(--success); text-align: center; margin-bottom: 1rem;">✅ Success!</h2>
-              <p style="text-align: center; color: var(--text-muted); margin-bottom: 1.5rem;">Swap request sent successfully.</p>
-              <div class="modal-actions" style="justify-content: center;">
-                <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+              <div class="modal" onclick="event.stopPropagation()">
+                <h2 style="color: var(--success); text-align: center; margin-bottom: 1rem;">✅ Success!</h2>
+                <p style="text-align: center; color: var(--text-muted); margin-bottom: 1.5rem;">Swap request sent successfully.</p>
+                <div class="modal-actions" style="justify-content: center;">
+                  <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                </div>
               </div>
-            </div>
-          `;
+            `;
           } else {
             const data = await res.json();
             alert(data.error || "Failed to send swap request");
           }
         } catch (err) {
+          console.error('Error submitting swap:', err);
           alert("Failed to send swap request");
         }
       }
@@ -230,9 +231,11 @@
           if (res.ok) {
             window.location.href = "my-items.html";
           } else {
-            alert("Failed to delete item");
+            const data = await res.json();
+            alert(data.error || "Failed to delete item");
           }
         } catch (err) {
+          console.error('Error deleting item:', err);
           alert("Failed to delete item");
         }
       }
