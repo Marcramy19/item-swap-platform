@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profile - EcoSwap</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Same header as other pages -->
+  
+  <main>
+    <div class="page-header">
+      <h1>My Profile</h1>
+    </div>
+    
+    <div id="profile-content" class="loading">Loading...</div>
+  </main>
+  
+  <script src="js/app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = getUser();
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/users/me', {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        const profile = await res.json();
+        
+        document.getElementById('profile-content').innerHTML = `
+          <div class="card" style="max-width: 600px; margin: 0 auto;">
+            <h2>${escapeHtml(profile.name)}</h2>
+            <p><strong>Email:</strong> ${escapeHtml(profile.email)}</p>
+            <p><strong>City:</strong> ${escapeHtml(profile.city || 'Not set')}</p>
+            <p><strong>Bio:</strong> ${escapeHtml(profile.bio || 'No bio yet')}</p>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">
+              Member since ${new Date(profile.createdAt).toLocaleDateString()}
+            </p>
+            <a href="my-items.html" class="btn btn-primary">View My Items</a>
+          </div>
+        `;
+      } catch (err) {
+        document.getElementById('profile-content').innerHTML = 
+          '<div class="alert alert-error">Failed to load profile</div>';
+      }
+    });
+    
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
