@@ -53,35 +53,54 @@
 
         // Load items
         await loadMyItems();
-      });
+            });
 
       async function loadMyItems() {
-        const grid = document.getElementById("items-grid");
-        const countEl = document.getElementById("items-count");
-        const errorEl = document.getElementById("error-msg");
-
+        const grid = document.getElementById('items-grid');
+        const countEl = document.getElementById('items-count');
+        const errorEl = document.getElementById('error-msg')      ;
+  
         try {
           const token = getToken();
-          const res = await fetch("/api/items/mine", {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-
-          if (res.status === 401) {
-            // Token invalid - redirect to login
-            window.location.href = "login.html";
+          const user = getUser();
+          
+          // 🔍 DEBUG LOGS (remove after fixing)
+          console.log('=== My Items Debug ===');
+          console.log('Token from getToken():', token);
+          console.log('User from getUser():', user);
+          console.log('Raw localStorage token:', localStorage.getItem('ecoswap_token'));
+          console.log('Raw localStorage user:', localStorage.getItem('ecoswap_user'));
+          
+          if (!user || !token) {
+            console.log('❌ No user or token - redirecting to login');
+            window.location.href = 'login.html';
             return;
           }
-
+          
+          const res = await fetch('/api/items/mine', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log('API Response status:', res.status); // 🔍 See actual status
+          
+          if (res.status === 401) {
+            console.log('❌ 401 - Token invalid, clearing and redirecting');
+            localStorage.removeItem('ecoswap_token');
+            localStorage.removeItem('ecoswap_user');
+            window.location.href = 'login.html';
+            return;
+          }
+          
           if (!res.ok) {
             throw new Error(`Failed to load items: ${res.status}`);
           }
-
+          
           const items = await res.json();
-
+          console.log('✅ Items loaded:', items);
           // Update count
           countEl.textContent = `${items.length} item${items.length !== 1 ? "s" : ""} listed`;
 
