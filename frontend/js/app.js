@@ -74,7 +74,6 @@ function updateNav() {
       <a href="item-form.html">Post Item</a>
       <a href="my-items.html">My Items</a>
       <a href="swaps.html">Swaps</a>
-      // <a href="profile.html">Profile</a>
       <a href="#" id="logout-btn">Logout (${escapeHtml(user.name)})</a>
     `;
     
