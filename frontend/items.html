@@ -64,67 +64,71 @@
     });
     
     async function loadItems(page, category) {
-      const grid = document.getElementById('items-grid');
-      const pagination = document.getElementById('pagination');
-      
-      try {
-        const params = new URLSearchParams({ page });
-        if (category !== 'all') params.append('category', category);
-        
-        const res = await fetch(`/api/items?${params}`);
-        const data = await res.json();
-        
-        if (data.items.length === 0) {
-          grid.innerHTML = `
-            <div class="empty-state" style="grid-column: 1/-1;">
-              <span>📭</span>
-              <p>No items found. Be the first to post one!</p>
-            </div>
-          `;
-          pagination.innerHTML = '';
-          return;
-        }
-        
-        // Inside the render function for items
-        grid.innerHTML = items.map(item => {
-          // ✅ Safely extract owner info
-          const ownerName = item.owner?.name || 'Unknown';
-          const ownerCity = item.owner?.city || 'Unknown';
-          
-          // ✅ Safely extract description
-          const description = item.description || 'No description';
-          
-          return `
-            <article class="item-card">
-              <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
-              <div class="badges">
-                <span class="badge badge-category">${escapeHtml(item.category)}</span>
-                <span class="badge badge-condition">${escapeHtml((item.condition || '').replace('_', ' '))}</span>
-                <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
-              </div>
-              <p>${escapeHtml(description)}</p>
-              <p style="color: var(--text-muted); font-size: 0.875rem;">
-                by ${escapeHtml(ownerName)} • ${escapeHtml(ownerCity)}
-              </p>
-              <a href="item-detail.html?id=${item.id}" class="btn btn-primary btn-sm">View Details</a>
-            </article>
-          `;
-        }).join('');
-        
-        // Pagination
-        if (data.totalPages > 1) {
-          pagination.innerHTML = `
-            <button ${page <= 1 ? 'disabled' : ''} onclick="loadItems(${page - 1}, '${currentCategory}')">← Prev</button>
-            <span style="padding: 6px 12px; font-size: 0.875rem;">Page ${page} of ${data.totalPages}</span>
-            <button ${page >= data.totalPages ? 'disabled' : ''} onclick="loadItems(${page + 1}, '${currentCategory}')">Next →</button>
-          `;
-        } else {
-          pagination.innerHTML = '';
-        }
-      } catch (err) {
-        grid.innerHTML = '<div class="alert alert-error">Failed to load items</div>';
-      }
+  const grid = document.getElementById('items-grid');
+  const pagination = document.getElementById('pagination');
+  
+  try {
+    const params = new URLSearchParams({ page });
+    if (category !== 'all') params.append('category', category);
+    
+    const res = await fetch(`/api/items?${params}`);
+    
+    if (!res.ok) {
+      throw new Error(`Failed to load items: ${res.status}`);
     }
+    
+    const data = await res.json();
+    
+    if (!data.items || data.items.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem;">
+          <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">📭</span>
+          <p style="color: var(--text-muted);">No items found. Be the first to post one!</p>
+        </div>
+      `;
+      pagination.innerHTML = '';
+      return;
+    }
+    
+    // ✅ CORRECT: Use data.items (not just 'items')
+    grid.innerHTML = data.items.map(item => {
+      const ownerName = item.owner?.name || 'Unknown';
+      const ownerCity = item.owner?.city || 'Unknown';
+      const description = item.description || 'No description';
+      
+      return `
+        <article class="item-card">
+          <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
+          <div class="badges">
+            <span class="badge badge-category">${escapeHtml(item.category)}</span>
+            <span class="badge badge-condition">${escapeHtml((item.condition || '').replace('_', ' '))}</span>
+            <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
+          </div>
+          <p>${escapeHtml(description)}</p>
+          <p style="color: var(--text-muted); font-size: 0.875rem;">
+            by ${escapeHtml(ownerName)} • ${escapeHtml(ownerCity)}
+          </p>
+          <a href="item-detail.html?id=${item.id}" class="btn btn-primary btn-sm">View Details</a>
+        </article>
+      `;
+    }).join('');
+    
+    // Pagination
+    if (data.totalPages > 1) {
+      pagination.innerHTML = `
+        <button ${page <= 1 ? 'disabled' : ''} onclick="loadItems(${page - 1}, '${currentCategory}')">← Prev</button>
+        <span style="padding: 6px 12px; font-size: 0.875rem;">Page ${page} of ${data.totalPages}</span>
+        <button ${page >= data.totalPages ? 'disabled' : ''} onclick="loadItems(${page + 1}, '${currentCategory}')">Next →</button>
+      `;
+    } else {
+      pagination.innerHTML = '';
+    }
+  } catch (err) {
+    console.error('Load items error:', err);
+    grid.innerHTML = '<div class="alert alert-error">Failed to load items. Please try again.</div>';
+    pagination.innerHTML = '';
+  }
+}
     
     function escapeHtml(str) {
       if (!str) return '';
