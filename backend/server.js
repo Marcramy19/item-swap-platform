@@ -377,13 +377,11 @@ app.get('/api/health', (req, res) => {
 
 // ============ CATCH-ALL: Serve index.html for frontend routing ============
 // ⚠️ EXPRESS 5.x FIX: Use path-to-regexp v8+ compatible syntax
-// This route MUST come AFTER all API routes, BEFORE error handler
 app.get('{*path}', (req, res) => {
-  // Skip API routes - let them 404 normally
+  // Skip API routes
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'Not found' });
   }
-  // Serve frontend for all other routes (SPA fallback)
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
