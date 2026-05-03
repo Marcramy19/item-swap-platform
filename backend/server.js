@@ -3,8 +3,9 @@ require('dotenv').config();
 // 🔍 DEBUG: Log when server starts and routes are registered
 console.log('🚀 EcoSwap API routes initializing...');
 console.log('✅ Registered: GET /api/items');
-console.log('✅ Registered: GET /api/items/mine');  // ← This should appear in Vercel logs
+console.log('✅ Registered: GET /api/items/mine');
 console.log('✅ Registered: GET /api/items/:id');
+
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
@@ -23,13 +24,13 @@ const prisma = new PrismaClient();
 // 🔹 Middleware
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
+
 // 🔹 Serve frontend files (Vercel-compatible path)
 const frontendPath = process.env.VERCEL 
   ? path.join(process.cwd(), 'frontend') 
   : path.join(__dirname, '..', 'frontend');
 app.use(express.static(frontendPath));
 
-// 🔹 THEN define your routes below...
 // 🔹 Auth Middleware
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -89,9 +90,6 @@ app.post('/api/auth/login', async (req, res) => {
 // ============ ITEMS ============
 // ⚠️ ORDER MATTERS: Specific routes BEFORE parameterized routes!
 
-// 1. List all items (Public, paginated)
-// ============ ITEMS ============
-
 // 1. List all items (public)
 app.get('/api/items', async (req, res) => {
   try {
@@ -120,7 +118,7 @@ app.get('/api/items', async (req, res) => {
 
 // 2. List MY items (auth required) ← MUST COME BEFORE /:id
 app.get('/api/items/mine', auth, async (req, res) => {
-  console.log('🔍 DEBUG: /api/items/mine called'); // ← Keep this for testing
+  console.log('🔍 DEBUG: /api/items/mine called');
   try {
     const items = await prisma.item.findMany({
       where: { ownerId: req.user.userId },
@@ -206,6 +204,7 @@ app.delete('/api/items/:id', auth, async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
+
 // ============ SWAPS ============
 app.post('/api/swaps', auth, async (req, res) => {
   try {
@@ -350,7 +349,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ============ ERROR HANDLER ============
+// ============ CATCH-ALL: Serve index.html for frontend routing ============
+// ⚠️ MUST COME AFTER all API routes, BEFORE error handler
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// ============ ERROR HANDLER (MUST BE LAST) ============
 app.use((err, req, res, next) => {
   console.error('❌ Server error:', err);
   res.status(err.statusCode || 500).json({ error: err.message || 'Internal server error' });
