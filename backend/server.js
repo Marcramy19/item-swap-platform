@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// 🔍 DEBUG: Log when server starts and routes are registered
+console.log('🚀 EcoSwap API routes initializing...');
+console.log('✅ Registered: GET /api/items');
+console.log('✅ Registered: GET /api/items/mine');  // ← This should appear in Vercel logs
+console.log('✅ Registered: GET /api/items/:id');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
@@ -78,10 +84,12 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ============ ITEMS ============
-// ============ ITEMS ============
 // ⚠️ ORDER MATTERS: Specific routes BEFORE parameterized routes!
 
 // 1. List all items (Public, paginated)
+// ============ ITEMS ============
+
+// 1. List all items (public)
 app.get('/api/items', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -107,8 +115,9 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
-// 2. List my items (Auth required) — ✅ MOVED UP, BEFORE /:id
+// 2. List MY items (auth required) ← MUST COME BEFORE /:id
 app.get('/api/items/mine', auth, async (req, res) => {
+  console.log('🔍 DEBUG: /api/items/mine called'); // ← Keep this for testing
   try {
     const items = await prisma.item.findMany({
       where: { ownerId: req.user.userId },
@@ -122,7 +131,7 @@ app.get('/api/items/mine', auth, async (req, res) => {
   }
 });
 
-// 3. Get single item (Public) — ✅ Parameterized route comes LAST
+// 3. Get single item by ID (public) ← PARAMETERIZED, MUST COME LAST
 app.get('/api/items/:id', async (req, res) => {
   try {
     const item = await prisma.item.findUnique({
@@ -140,7 +149,7 @@ app.get('/api/items/:id', async (req, res) => {
   }
 });
 
-// 4. Create item (Auth required)
+// 4. Create item (auth)
 app.post('/api/items', auth, async (req, res) => {
   try {
     const { title, description, category, condition } = req.body;
@@ -158,7 +167,7 @@ app.post('/api/items', auth, async (req, res) => {
   }
 });
 
-// 5. Update item (Owner only)
+// 5. Update item (auth + owner)
 app.put('/api/items/:id', auth, async (req, res) => {
   try {
     const { title, description, category, condition } = req.body;
@@ -179,7 +188,7 @@ app.put('/api/items/:id', auth, async (req, res) => {
   }
 });
 
-// 6. Delete item (Owner or admin)
+// 6. Delete item (auth + owner/admin)
 app.delete('/api/items/:id', auth, async (req, res) => {
   try {
     const item = await prisma.item.findUnique({ where: { id: req.params.id } });
