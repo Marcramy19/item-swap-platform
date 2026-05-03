@@ -78,6 +78,10 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ============ ITEMS ============
+// ============ ITEMS ============
+// ⚠️ ORDER MATTERS: Specific routes BEFORE parameterized routes!
+
+// 1. List all items (Public, paginated)
 app.get('/api/items', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -103,6 +107,22 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
+// 2. List my items (Auth required) — ✅ MOVED UP, BEFORE /:id
+app.get('/api/items/mine', auth, async (req, res) => {
+  try {
+    const items = await prisma.item.findMany({
+      where: { ownerId: req.user.userId },
+      select: { id: true, title: true, category: true, condition: true, status: true, createdAt: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(items);
+  } catch (err) {
+    console.error('My items error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// 3. Get single item (Public) — ✅ Parameterized route comes LAST
 app.get('/api/items/:id', async (req, res) => {
   try {
     const item = await prisma.item.findUnique({
@@ -120,6 +140,7 @@ app.get('/api/items/:id', async (req, res) => {
   }
 });
 
+// 4. Create item (Auth required)
 app.post('/api/items', auth, async (req, res) => {
   try {
     const { title, description, category, condition } = req.body;
@@ -137,6 +158,7 @@ app.post('/api/items', auth, async (req, res) => {
   }
 });
 
+// 5. Update item (Owner only)
 app.put('/api/items/:id', auth, async (req, res) => {
   try {
     const { title, description, category, condition } = req.body;
@@ -157,6 +179,7 @@ app.put('/api/items/:id', auth, async (req, res) => {
   }
 });
 
+// 6. Delete item (Owner or admin)
 app.delete('/api/items/:id', auth, async (req, res) => {
   try {
     const item = await prisma.item.findUnique({ where: { id: req.params.id } });
@@ -171,21 +194,6 @@ app.delete('/api/items/:id', auth, async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
-
-app.get('/api/items/mine', auth, async (req, res) => {
-  try {
-    const items = await prisma.item.findMany({
-      where: { ownerId: req.user.userId },
-      select: { id: true, title: true, category: true, condition: true, status: true, createdAt: true },
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(items);
-  } catch (err) {
-    console.error('My items error:', err);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
 // ============ SWAPS ============
 app.post('/api/swaps', auth, async (req, res) => {
   try {
