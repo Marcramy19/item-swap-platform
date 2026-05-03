@@ -85,18 +85,31 @@
           return;
         }
         
-        grid.innerHTML = data.items.map(item => `
-          <article class="item-card">
-            <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
-            <div class="badges">
-              <span class="badge badge-category">${escapeHtml(item.category)}</span>
-              <span class="badge badge-condition">${escapeHtml(item.condition.replace('_', ' '))}</span>
-              <span class="badge badge-status-available">${escapeHtml(item.status)}</span>
-            </div>
-            <p>${escapeHtml(item.description || 'No description')}</p>
-            <div class="owner">by ${escapeHtml(item.owner_name || 'Unknown')} • ${escapeHtml(item.owner_city || 'Unknown')}</div>
-          </article>
-        `).join('');
+        // Inside the render function for items
+        grid.innerHTML = items.map(item => {
+          // ✅ Safely extract owner info
+          const ownerName = item.owner?.name || 'Unknown';
+          const ownerCity = item.owner?.city || 'Unknown';
+          
+          // ✅ Safely extract description
+          const description = item.description || 'No description';
+          
+          return `
+            <article class="item-card">
+              <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
+              <div class="badges">
+                <span class="badge badge-category">${escapeHtml(item.category)}</span>
+                <span class="badge badge-condition">${escapeHtml((item.condition || '').replace('_', ' '))}</span>
+                <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
+              </div>
+              <p>${escapeHtml(description)}</p>
+              <p style="color: var(--text-muted); font-size: 0.875rem;">
+                by ${escapeHtml(ownerName)} • ${escapeHtml(ownerCity)}
+              </p>
+              <a href="item-detail.html?id=${item.id}" class="btn btn-primary btn-sm">View Details</a>
+            </article>
+          `;
+        }).join('');
         
         // Pagination
         if (data.totalPages > 1) {
