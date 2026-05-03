@@ -143,7 +143,7 @@
 
       async function deleteItem(itemId) {
         if (!confirm('Are you sure you want to delete this item?')) return;
-
+            
         try {
           const token = getToken();
           const res = await fetch(`/api/items/${itemId}`, {
@@ -153,15 +153,16 @@
             }
           });
         
+          const data = await res.json();
+
           if (!res.ok) {
-            const data = await res.json();
+            // ✅ Show specific error from backend
             throw new Error(data.error || 'Failed to delete item');
           }
         
-          // ✅ Reload the list after successful deletion
           await loadMyItems();
           alert('Item deleted successfully');
-          
+
         } catch (err) {
           console.error('Delete error:', err);
           alert(err.message || 'Failed to delete item');

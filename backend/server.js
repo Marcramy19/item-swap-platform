@@ -216,17 +216,55 @@ app.put('/api/items/:id', auth, async (req, res) => {
 });
 
 // 6. Delete item (auth + owner/admin)
+// 6. Delete item (auth + owner/admin)
 app.delete('/api/items/:id', auth, async (req, res) => {
   try {
-    const item = await prisma.item.findUnique({ where: { id: req.params.id } });
+    const item = await prisma.item.findUnique({ 
+      where: { id: req.params.id },
+      include: { 
+        offeredSwaps: true,   // Check if item was offered in swaps
+        requestedSwaps: true  // Check if item was requested in swaps
+      }
+    });
+    
     if (!item) return res.status(404).json({ error: 'Item not found' });
+    
+    // ✅ Check ownership
     if (item.ownerId !== req.user.userId && !req.user.isAdmin) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
+    
+    // ✅ Prevent deletion of swapped items (business logic)
+    if (item.status === 'swapped') {
+      return res.status(400).json({ 
+        error: 'Cannot delete swapped items. Swapped items are part of transaction history.' 
+      });
+    }
+    
+    // ✅ Optional: Delete pending swap requests involving this item
+    // (Only if you want to allow deletion of available items with pending swaps)
+    await prisma.swapRequest.deleteMany({
+      where: {
+        OR: [
+          { offeredItemId: item.id, status: 'pending' },
+          { requestedItemId: item.id, status: 'pending' }
+        ]
+      }
+    });
+    
     await prisma.item.delete({ where: { id: req.params.id } });
     res.json({ message: 'Item deleted' });
+    
   } catch (err) {
     console.error('Delete item error:', err);
+    
+    // ✅ Better error messaging for foreign key constraints
+    if (err.code === 'P2003') { // Prisma foreign key error
+      return res.status(400).json({ 
+        error: 'Cannot delete: this item is referenced in swap history. Only available items can be deleted.' 
+      });
+    }
+    
     res.status(500).json({ error: 'Database error' });
   }
 });
