@@ -21,19 +21,13 @@
       color: var(--text-muted);
       transition: all 0.2s;
     }
-    .tab:hover {
-      color: var(--text);
-    }
+    .tab:hover { color: var(--text); }
     .tab.active {
       color: var(--primary);
       border-bottom-color: var(--primary);
     }
-    .tab-content {
-      display: none;
-    }
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
     .swap-card {
       background: var(--card-bg);
       border: 1px solid var(--border);
@@ -79,18 +73,9 @@
       font-weight: 500;
       margin-bottom: 1rem;
     }
-    .status-pending {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .status-accepted {
-      background: #dcfce7;
-      color: #166534;
-    }
-    .status-rejected {
-      background: #f3f4f6;
-      color: #4b5563;
-    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-accepted { background: #dcfce7; color: #166534; }
+    .status-rejected { background: #f3f4f6; color: #4b5563; }
   </style>
 </head>
 <body>
@@ -130,31 +115,50 @@
   
   <script src="js/app.js"></script>
   <script>
-    let allSwaps = [];
-    
     document.addEventListener('DOMContentLoaded', async () => {
       await loadSwaps();
     });
     
     async function loadSwaps() {
+      const receivedContainer = document.getElementById('received-swaps');
+      const sentContainer = document.getElementById('sent-swaps');
+      
       try {
+        const token = getToken();
         const res = await fetch('/api/swaps/mine', {
-          headers: { 'Authorization': `Bearer ${getToken()}` }
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
         
-        if (!res.ok) {
-          if (res.status === 401) {
-            window.location.href = 'login.html';
-            return;
-          }
-          throw new Error('Failed to load swaps');
+        if (res.status === 401) {
+          window.location.href = 'login.html';
+          return;
         }
         
-        allSwaps = await res.json();
-        renderSwaps();
+        if (!res.ok) {
+          throw new Error(`Failed to load swaps: ${res.status}`);
+        }
+        
+        // ✅ API returns: { sent: [...], received: [...] }
+        const data = await res.json();
+        
+        console.log('Swaps loaded:', {
+          sent: data.sent?.length || 0,
+          received: data.received?.length || 0
+        });
+        
+        // ✅ Render received swaps (requests others sent to you)
+        renderSwaps(receivedContainer, data.received || [], 'received');
+        
+        // ✅ Render sent swaps (requests you sent to others)
+        renderSwaps(sentContainer, data.sent || [], 'sent');
+        
       } catch (err) {
-        document.getElementById('received-swaps').innerHTML = '<div class="alert alert-error">Failed to load swaps</div>';
-        document.getElementById('sent-swaps').innerHTML = '<div class="alert alert-error">Failed to load swaps</div>';
+        console.error('Error loading swaps:', err);
+        receivedContainer.innerHTML = '<div class="alert alert-error">Failed to load swaps. Please try again.</div>';
+        sentContainer.innerHTML = '<div class="alert alert-error">Failed to load swaps. Please try again.</div>';
       }
     }
     
@@ -166,117 +170,87 @@
       document.getElementById(`${tab}-tab`).classList.add('active');
     }
     
-    function renderSwaps() {
-      const user = getUser();
+    function renderSwaps(container, swaps, type) {
+      if (!container) return;
       
-      // Filter received swaps (where user owns the requested item)
-      const received = allSwaps.filter(swap => {
-        // Check if this swap is for an item owned by the current user
-        return swap.requested_owner_id == user.id;
-      });
-      
-      // Filter sent swaps (where user is the requester)
-      const sent = allSwaps.filter(swap => {
-        return swap.requester_name === user.name;
-      });
-      
-      renderReceivedSwaps(received);
-      renderSentSwaps(sent);
-    }
-    
-    function renderReceivedSwaps(swaps) {
-      const container = document.getElementById('received-swaps');
-      
-      if (swaps.length === 0) {
+      if (!swaps || swaps.length === 0) {
         container.innerHTML = `
           <div class="empty-state" style="text-align: center; padding: 4rem 2rem;">
             <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">🔄</span>
-            <p style="color: var(--text-muted);">No received swap requests yet.</p>
+            <p style="color: var(--text-muted);">
+              ${type === 'received' ? 'No received swap requests yet.' : 'You haven\'t sent any swap requests yet.'}
+            </p>
           </div>
         `;
         return;
       }
       
-      container.innerHTML = swaps.map(swap => `
-        <div class="swap-card">
-          <div class="swap-items">
-            <div class="swap-item">
-              <strong>${escapeHtml(swap.offered_title)}</strong>
-              <span class="badge badge-category">${escapeHtml(swap.offered_cat)}</span>
-              <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">by ${escapeHtml(swap.requester_name)}</p>
+      container.innerHTML = swaps.map(swap => {
+        // ✅ Extract data from nested objects (Prisma response structure)
+        const offered = swap.offeredItem || {};
+        const requested = swap.requestedItem || {};
+        const offeredOwner = offered.owner || {};
+        const requestedOwner = requested.owner || {};
+        
+        const isPending = swap.status === 'pending';
+        const canRespond = type === 'received' && isPending;
+        
+        return `
+          <div class="swap-card">
+            <div class="swap-items">
+              <div class="swap-item">
+                <strong>${escapeHtml(offered.title || 'Unknown item')}</strong>
+                <span class="badge badge-category">${escapeHtml(offered.category || '')}</span>
+                <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">
+                  ${type === 'sent' ? 'Your item' : `by ${escapeHtml(offeredOwner.name || 'User')}`}
+                </p>
+              </div>
+              <div class="swap-arrow">⇄</div>
+              <div class="swap-item">
+                <strong>${escapeHtml(requested.title || 'Unknown item')}</strong>
+                <span class="badge badge-category">${escapeHtml(requested.category || '')}</span>
+                <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">
+                  ${type === 'received' ? 'Your item' : `by ${escapeHtml(requestedOwner.name || 'User')}`}
+                </p>
+              </div>
             </div>
-            <div class="swap-arrow">⇄</div>
-            <div class="swap-item">
-              <strong>${escapeHtml(swap.requested_title)}</strong>
-              <span class="badge badge-category">${escapeHtml(swap.requested_cat)}</span>
-              <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">Your item</p>
-            </div>
-          </div>
-          <span class="status-badge status-${swap.status}">${swap.status}</span>
-          ${swap.status === 'pending' ? `
-            <div class="swap-actions">
-              <button class="btn btn-primary btn-sm" onclick="respondSwap(${swap.id}, 'accepted')">Accept</button>
-              <button class="btn btn-danger btn-sm" onclick="respondSwap(${swap.id}, 'rejected')">Reject</button>
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
-    }
-    
-    function renderSentSwaps(swaps) {
-      const container = document.getElementById('sent-swaps');
-      
-      if (swaps.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state" style="text-align: center; padding: 4rem 2rem;">
-            <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">🔄</span>
-            <p style="color: var(--text-muted);">You haven't sent any swap requests yet.</p>
+            
+            <span class="status-badge status-${swap.status}">${swap.status}</span>
+            
+            ${canRespond ? `
+              <div class="swap-actions">
+                <button class="btn btn-primary btn-sm" onclick="respondSwap('${swap.id}', 'accepted')">Accept</button>
+                <button class="btn btn-danger btn-sm" onclick="respondSwap('${swap.id}', 'rejected')">Reject</button>
+              </div>
+            ` : ''}
           </div>
         `;
-        return;
-      }
-      
-      container.innerHTML = swaps.map(swap => `
-        <div class="swap-card">
-          <div class="swap-items">
-            <div class="swap-item">
-              <strong>${escapeHtml(swap.offered_title)}</strong>
-              <span class="badge badge-category">${escapeHtml(swap.offered_cat)}</span>
-              <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">Your item</p>
-            </div>
-            <div class="swap-arrow">⇄</div>
-            <div class="swap-item">
-              <strong>${escapeHtml(swap.requested_title)}</strong>
-              <span class="badge badge-category">${escapeHtml(swap.requested_cat)}</span>
-              <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem;">by ${escapeHtml(swap.owner_name)}</p>
-            </div>
-          </div>
-          <span class="status-badge status-${swap.status}">${swap.status}</span>
-        </div>
-      `).join('');
+      }).join('');
     }
     
     async function respondSwap(swapId, status) {
       if (!confirm(`Are you sure you want to ${status} this swap?`)) return;
       
       try {
+        const token = getToken();
         const res = await fetch(`/api/swaps/${swapId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getToken()}`
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({ status })
         });
         
         if (res.ok) {
-          await loadSwaps();
+          await loadSwaps(); // Refresh the list
         } else {
           const data = await res.json();
-          alert(data.error || 'Failed to respond to swap');
+          alert(data.error || `Failed to ${status} swap`);
         }
       } catch (err) {
-        alert('Failed to respond to swap');
+        console.error('Error responding to swap:', err);
+        alert('Failed to respond to swap. Please try again.');
       }
     }
     
