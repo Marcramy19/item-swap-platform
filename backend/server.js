@@ -90,7 +90,7 @@ app.post('/api/auth/login', async (req, res) => {
 // ============ ITEMS ============
 // ⚠️ ORDER MATTERS: Specific routes BEFORE parameterized routes!
 
-// 1. List all items (public)
+// 1. List all items (public, paginated) - WITH description & owner
 app.get('/api/items', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -101,16 +101,16 @@ app.get('/api/items', async (req, res) => {
     const [items, total] = await Promise.all([
       prisma.item.findMany({
         where,
-        // ✅ ADD description and owner here:
+        // ✅ MUST include description and owner for browse page
         select: { 
           id: true, 
           title: true, 
-          description: true,  // ✅ Added
+          description: true,      // ← Added for browse page
           category: true, 
           condition: true, 
           status: true, 
           createdAt: true,
-          owner: {            // ✅ Added
+          owner: {                // ← Added for browse page
             select: { id: true, name: true, city: true }
           }
         },
@@ -121,6 +121,7 @@ app.get('/api/items', async (req, res) => {
       prisma.item.count({ where })
     ]);
 
+    // ✅ Return paginated response
     res.json({ items, total, page, totalPages: Math.ceil(total / PAGE_SIZE) });
   } catch (err) {
     console.error('Items list error:', err);
@@ -128,28 +129,28 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
-// 2. List MY items (auth required) ← MUST COME BEFORE /:id
-// 2. List MY items (auth required)
+// 2. List MY items (auth required) - NO pagination, WITH description & owner
 app.get('/api/items/mine', auth, async (req, res) => {
   console.log('🔍 DEBUG: /api/items/mine called');
   try {
     const items = await prisma.item.findMany({
       where: { ownerId: req.user.userId },
-      // ✅ ADD description and owner here:
+      // ✅ MUST include description and owner
       select: { 
         id: true, 
         title: true, 
-        description: true,  // ✅ Added
+        description: true,      // ← Added
         category: true, 
         condition: true, 
         status: true, 
         createdAt: true,
-        owner: {            // ✅ Added
+        owner: {                // ← Added
           select: { id: true, name: true, city: true }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
+    // ✅ Return just the array (no pagination wrapper)
     res.json(items);
   } catch (err) {
     console.error('My items error:', err);
@@ -375,8 +376,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============ CATCH-ALL: Serve index.html for frontend routing ============
-// ⚠️ MUST COME AFTER all API routes, BEFORE error handler
-app.get('*', (req, res) => {
+// ⚠️ EXPRESS 5.x FIX: Use path-to-regexp v8+ compatible syntax
+// This route MUST come AFTER all API routes, BEFORE error handler
+app.get('{*path}', (req, res) => {
+  // Skip API routes - let them 404 normally
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  // Serve frontend for all other routes (SPA fallback)
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
