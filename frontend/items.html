@@ -94,7 +94,7 @@
       grid.innerHTML = data.items.map(item => {
         // ✅ Safely extract owner info with fallbacks
         const ownerName = item.owner?.name?.trim() || 'Unknown';
-        const ownerCity = item.owner?.city?.trim() || '';
+        const ownerCity = item.owner?.city?.trim() || 'Unknown';
 
         // ✅ Safely extract description
         const description = item.description?.trim() || 'No description';
