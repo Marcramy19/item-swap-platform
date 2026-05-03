@@ -6,13 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "postinstall": "prisma generate"
   },
-  "keywords": [
-    "swap",
-    "sustainable",
-    "eco"
-  ],
+  "keywords": ["swap", "sustainable", "eco"],
   "author": "",
   "license": "ISC",
   "dependencies": {
