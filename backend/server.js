@@ -376,12 +376,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============ CATCH-ALL: Serve index.html for frontend routing ============
-// ⚠️ EXPRESS 5.x FIX: Use path-to-regexp v8+ compatible syntax
-app.get('{*path}', (req, res) => {
-  // Skip API routes
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'Not found' });
+// ✅ NEW - Express 5.x compatible catch-all:
+app.use((req, res, next) => {
+  // Skip API routes - let them 404 normally
+  if (req.path.startsWith('/api/')) {
+    return next();
   }
+  // Serve frontend for all other paths (SPA fallback)
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
