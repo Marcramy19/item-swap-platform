@@ -90,28 +90,31 @@
       return;
     }
     
-    // ✅ CORRECT: Use data.items (not just 'items')
-    grid.innerHTML = data.items.map(item => {
-      const ownerName = item.owner?.name || 'Unknown';
-      const ownerCity = item.owner?.city || 'Unknown';
-      const description = item.description || 'No description';
-      
-      return `
-        <article class="item-card">
-          <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
-          <div class="badges">
-            <span class="badge badge-category">${escapeHtml(item.category)}</span>
-            <span class="badge badge-condition">${escapeHtml((item.condition || '').replace('_', ' '))}</span>
-            <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
-          </div>
-          <p>${escapeHtml(description)}</p>
-          <p style="color: var(--text-muted); font-size: 0.875rem;">
-            by ${escapeHtml(ownerName)} • ${escapeHtml(ownerCity)}
-          </p>
-          <a href="item-detail.html?id=${item.id}" class="btn btn-primary btn-sm">View Details</a>
-        </article>
-      `;
-    }).join('');
+      // Inside the map function for items
+      grid.innerHTML = data.items.map(item => {
+        // ✅ Safely extract owner info with fallbacks
+        const ownerName = item.owner?.name?.trim() || 'Unknown';
+        const ownerCity = item.owner?.city?.trim() || 'Unknown';
+        
+        // ✅ Safely extract description
+        const description = item.description?.trim() || 'No description';
+        
+        return `
+          <article class="item-card">
+            <h3><a href="item-detail.html?id=${item.id}">${escapeHtml(item.title)}</a></h3>
+            <div class="badges">
+              <span class="badge badge-category">${escapeHtml(item.category)}</span>
+              <span class="badge badge-condition">${escapeHtml((item.condition || '').replace('_', ' '))}</span>
+              <span class="badge badge-status-${item.status}">${escapeHtml(item.status)}</span>
+            </div>
+            <p>${escapeHtml(description)}</p>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">
+              by ${escapeHtml(ownerName)} • ${escapeHtml(ownerCity)}
+            </p>
+            <a href="item-detail.html?id=${item.id}" class="btn btn-primary btn-sm">View Details</a>
+          </article>
+        `;
+      }).join('');
     
     // Pagination
     if (data.totalPages > 1) {
