@@ -23,10 +23,13 @@ const prisma = new PrismaClient();
 // 🔹 Middleware
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
+// 🔹 Serve frontend files (Vercel-compatible path)
 const frontendPath = process.env.VERCEL 
   ? path.join(process.cwd(), 'frontend') 
   : path.join(__dirname, '..', 'frontend');
 app.use(express.static(frontendPath));
+
+// 🔹 THEN define your routes below...
 // 🔹 Auth Middleware
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
